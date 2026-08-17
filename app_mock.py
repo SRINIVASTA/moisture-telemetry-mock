@@ -26,6 +26,22 @@ if "watering_active" not in st.session_state:
 
 # 2. Sidebar Configuration (Houses Sliders and Download Button)
 with st.sidebar:
+    st.header("🎮 System Operations")
+    
+    # MASTER SWITCH: Controls whether the simulation loop runs
+    run_simulation = st.toggle("🔌 Activate Telemetry Stream", value=False)
+    
+    # CLEAR DATA BUTTON: Flushes data frames and deletes the CSV
+    if st.button("🗑️ Clear Log & Reset History", type="primary"):
+        if os.path.exists(CSV_FILE):
+            os.remove(CSV_FILE)
+        st.session_state.history = []
+        st.session_state.sim_tick = 0
+        st.session_state.watering_active = False
+        st.toast("Telemetry data completely wiped!", icon="🔥")
+        st.rerun()
+
+    st.markdown("---")
     st.header("⚙️ Threshold Controls")
     st.write("Adjust trigger boundaries in real time:")
     
@@ -52,7 +68,6 @@ with st.sidebar:
 
 # 3. Main Layout Grid Components
 alert_banner = st.empty()
-#  Replace it with this:
 col1, col2, col3 = st.columns(3)
 
 with col1:
@@ -70,8 +85,43 @@ with col3:
 st.subheader("📋 Live Log Terminal (Last 10 Accumulated Rows)")
 table_spot = st.empty()
 
-# 4. Infinite Telemetry Pipeline Loop
-while True:
+# --- PRE-RENDER BLANK / INACTIVE SYSTEM VALUES ---
+def render_display_state(live_reading, sys_state, metric_delta, color_mode, total_rows, df_chart, last_10_df):
+    with metric_spot.container():
+        st.metric(label="MOCK_SENSOR_NODE_01", value=f"{live_reading} %", delta=metric_delta, delta_color=color_mode)
+        
+    with status_spot.container():
+        st.code(f"""
+Telemetry Mode : MOCK_SIMULATOR
+Active State   : {sys_state}
+Dry Trigger Set: {dry_threshold}%
+Wet Trigger Set: {wet_threshold}%
+Total Database : {total_rows} rows saved
+        """, language="yaml")
+        
+    with chart_spot.container():
+        if not df_chart.empty:
+            st.line_chart(df_chart.set_index("System Time"), height=230)
+        else:
+            st.info("No timeline data loaded.")
+        
+    with table_spot.container():
+        st.dataframe(last_10_df, use_container_width=True)
+
+# Read historical baseline state before potentially entering runtime loop
+all_data_exists = os.path.exists(CSV_FILE) and os.path.getsize(CSV_FILE) > 0
+all_data_df = pd.read_csv(CSV_FILE) if all_data_exists else pd.DataFrame(columns=["Timestamp", "Moisture (%)", "State", "Dry_Limit_Set", "Wet_Limit_Set"])
+total_accumulated_rows = len(all_data_df)
+last_10_df = all_data_df.tail(10).iloc[::-1] if not all_data_df.empty else all_data_df
+df_chart = pd.DataFrame(st.session_state.history)
+
+if not run_simulation:
+    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Flip the sidebar toggle to stream real-time data.")
+    current_moisture = st.session_state.history[-1]["Moisture (%)"] if st.session_state.history else 0
+    render_display_state(current_moisture, "IDLE / SUSPENDED", "🚫 PAUSED", "off", total_accumulated_rows, df_chart, last_10_df)
+
+# 4. Infinite Telemetry Pipeline Loop (Only activates if switch is ON)
+while run_simulation:
     st.session_state.sim_tick += 1
     t = st.session_state.sim_tick
     
@@ -132,27 +182,10 @@ while True:
     total_accumulated_rows = len(all_data_df)
 
     # --- RENDER TELEMETRY PLUGINS ---
-    with metric_spot.container():
-        st.metric(label="MOCK_SENSOR_NODE_01", value=f"{live_reading} %", delta=metric_delta, delta_color=color_mode)
-        
-    with status_spot.container():
-        st.code(f"""
-Telemetry Mode : MOCK_SIMULATOR
-Active State   : {sys_state}
-Dry Trigger Set: {dry_threshold}%
-Wet Trigger Set: {wet_threshold}%
-Total Database : {total_accumulated_rows} rows saved
-        """, language="yaml")
-        
-    with chart_spot.container():
-        st.line_chart(df_chart.set_index("System Time"), height=230)
-        
-    with table_spot.container():
-        st.dataframe(last_10_df, use_container_width=True)
+    render_display_state(live_reading, sys_state, metric_delta, color_mode, total_accumulated_rows, df_chart, last_10_df)
 
     # --- CONVERT COMPLETE LOG FOR DOWNLOAD LINK ---
-    # Safe fallback if user clicks download before CSV generates rows
-    if os.path.exists(CSV_FILE) and len(all_data_df) > 0:
+    if len(all_data_df) > 0:
         csv_data = all_data_df.to_csv(index=False).encode('utf-8')
         with download_spot.container():
             st.download_button(
@@ -160,8 +193,11 @@ Total Database : {total_accumulated_rows} rows saved
                 data=csv_data,
                 file_name=f"telemetry_export_{time.strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv",
-                key=f"csv_download_btn_{t}"  # Added dynamic iteration index to prevent duplicate key crashes
+                key=f"csv_download_btn_{t}"
             )
         
     # Execution clock rate interval (1 second)
     time.sleep(1)
+    
+    # Force a rerun to evaluate if the toggle was flipped off during sleep
+    st.rerun()
