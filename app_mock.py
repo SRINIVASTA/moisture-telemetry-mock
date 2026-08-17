@@ -151,15 +151,17 @@ Total Database : {total_accumulated_rows} rows saved
         st.dataframe(last_10_df, use_container_width=True)
 
     # --- CONVERT COMPLETE LOG FOR DOWNLOAD LINK ---
-    csv_data = all_data_df.to_csv(index=False).encode('utf-8')
-    with download_spot.container():
-        st.download_button(
-            label="📥 Download Complete CSV Log",
-            data=csv_data,
-            file_name=f"telemetry_export_{time.strftime('%Y%m%d_%H%M%S')}.csv",
-            mime="text/csv",
-            key="csv_download_btn"
-        )
+    # Safe fallback if user clicks download before CSV generates rows
+    if os.path.exists(CSV_FILE) and len(all_data_df) > 0:
+        csv_data = all_data_df.to_csv(index=False).encode('utf-8')
+        with download_spot.container():
+            st.download_button(
+                label="📥 Download Complete CSV Log",
+                data=csv_data,
+                file_name=f"telemetry_export_{time.strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                key=f"csv_download_btn_{t}"  # Added dynamic iteration index to prevent duplicate key crashes
+            )
         
     # Execution clock rate interval (1 second)
     time.sleep(1)
