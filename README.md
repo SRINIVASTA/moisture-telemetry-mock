@@ -15,24 +15,27 @@ A real-time, interactive IoT telemetry simulation dashboard built with **Streaml
 ---
 
 ## 🛠️ System Architecture & Mechanics
----
-🛰️ TELEMETRY SYSTEM MAIN PLATFORM
- ├── ⚙️ [SIDEBAR CONTROL CANVAS]
- │    └── User clicks "Clear & Reset"
+
+```text
+🛰️ TELEMETRY SYSTEM MAIN PLATFORM 
+ │
+ ├── ⚙️ [SIDEBAR CONTROL CANVAS] 
+ │    └── User clicks "Clear & Reset" 
  │         └── 💥 Disk Wiping Process (Deletes telemetry_log.csv)
  │
- └── ⚡ [REAL-TIME PIPELINE ENGINE]
+ └── ⚡ [REAL-TIME PIPELINE ENGINE] 
       └── Dynamic Data Stream Triggered (1Hz Frequency)
            └── 📊 Moisture State Diagnostic Matrix
                 └── 💾 File System Aggregation (Appends rows & saves back to disk)
----
+```
 
-1. **State Machine Logic**:
-   * **`Moisture <= Dry Threshold`**: Triggers a `CRITICAL: DRY START` alert status and switches the pump infrastructure **ON**.
-   * **`Moisture >= Wet Threshold`**: Triggers a `CRITICAL: WET STOP` warning safety threshold and switches the pump infrastructure **OFF**.
-   * **`In-Between Zones`**: Runs nominal operational protocols depending on the prior context state.
+### 🧠 State Machine Logic
+* **`Moisture <= Dry Threshold`**: Triggers a `CRITICAL: DRY START` alert status and switches the pump infrastructure **ON**.
+* **`Moisture >= Wet Threshold`**: Triggers a `CRITICAL: WET STOP` warning safety threshold and switches the pump infrastructure **OFF**.
+* **`In-Between Zones`**: Runs nominal operational protocols depending on the prior context state.
 
-2. **Session Persistence**: Utilizes `st.session_state` to retain live system metrics, tick indexes, and moving chart windows without breaking script execution layers.
+### 💾 Session Persistence
+Utilizes `st.session_state` to retain live system metrics, tick indexes, and moving chart windows without breaking script execution layers.
 
 ---
 
@@ -67,6 +70,7 @@ streamlit run app.py
 ---
 
 ## 📁 Data Storage Layout
+
 The log pipeline saves structured tabular events to `telemetry_log.csv` matching this architecture schema:
 
 | Column Name | Data Type | Description |
@@ -74,5 +78,5 @@ The log pipeline saves structured tabular events to `telemetry_log.csv` matching
 | **Timestamp** | `String` | System clock reference (`YYYY-MM-DD HH:MM:SS`) |
 | **Moisture (%)** | `Integer` | Computed mock soil moisture metrics |
 | **State** | `String` | Operational system warning code status |
-| **Dry_Limit_Set**| `Integer` | Active lower safe threshold boundary configuration |
-| **Wet_Limit_Set**| `Integer` | Active upper ceiling limit boundary configuration |
+| **Dry_Limit_Set** | `Integer` | Active lower safe threshold boundary configuration |
+| **Wet_Limit_Set** | `Integer` | Active upper ceiling limit boundary configuration |
