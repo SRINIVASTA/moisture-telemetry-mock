@@ -52,7 +52,8 @@ with st.sidebar:
 
 # 3. Main Layout Grid Components
 alert_banner = st.empty()
-col1, col2, col3 = st.columns()
+#  Replace it with this:
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.subheader("📊 Current Node")
