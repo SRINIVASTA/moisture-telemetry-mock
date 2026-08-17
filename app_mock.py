@@ -2,19 +2,21 @@ import streamlit as st
 import pandas as pd
 import time
 import math
+import os
 
-# Set widescreen telemetry dashboard layout
-st.set_page_config(page_title="Telemetry Core - Mock Setup", layout="wide")
+# Set widescreen layout
+st.set_page_config(page_title="Telemetry Core - Custom Thresholds", layout="wide")
 
-# Custom styling for a dark industrial telemetry theme
 st.markdown("""
     <style>
     .telemetry-title { text-align: center; font-family: 'Courier New', monospace; font-weight: bold; color: #00FF66; }
     </style>
-    <h1 class='telemetry-title'>🛰️ TELEMETRY SYSTEM CORE (MOCK MODE)</h1>
+    <h1 class='telemetry-title'>🛰️ TELEMETRY SYSTEM CORE (DYNAMIC CONTROL)</h1>
     """, unsafe_allow_html=True)
 
-# 1. Initialize Mock Simulation Variables in Session State
+CSV_FILE = "telemetry_log.csv"
+
+# 1. Initialize Mock States
 if "history" not in st.session_state:
     st.session_state.history = []
 if "sim_tick" not in st.session_state:
@@ -22,9 +24,35 @@ if "sim_tick" not in st.session_state:
 if "watering_active" not in st.session_state:
     st.session_state.watering_active = False
 
-# 2. Layout Grid Structure for Telemetry Telecast
+# 2. Sidebar Configuration (Houses Sliders and Download Button)
+with st.sidebar:
+    st.header("⚙️ Threshold Controls")
+    st.write("Adjust trigger boundaries in real time:")
+    
+    # Live sliders to change logic rules on the fly
+    dry_threshold = st.slider(
+        label="⚠️ Dry Start Threshold (%)", 
+        min_value=5, 
+        max_value=40, 
+        value=20, 
+        step=1
+    )
+    
+    wet_threshold = st.slider(
+        label="🛑 Wet Stop Threshold (%)", 
+        min_value=60, 
+        max_value=95, 
+        value=80, 
+        step=1
+    )
+    
+    st.markdown("---")
+    st.header("💾 Storage Manager")
+    download_spot = st.empty()
+
+# 3. Main Layout Grid Components
 alert_banner = st.empty()
-col1, col2, col3 = st.columns([1, 1, 2]) # Makes the chart column wider
+col1, col2, col3 = st.columns()
 
 with col1:
     st.subheader("📊 Current Node")
@@ -38,81 +66,99 @@ with col3:
     st.subheader("📈 Real-Time Stream Timeline")
     chart_spot = st.empty()
 
-# 3. Telemetry Live Mock Loop
+st.subheader("📋 Live Log Terminal (Last 10 Accumulated Rows)")
+table_spot = st.empty()
+
+# 4. Infinite Telemetry Pipeline Loop
 while True:
     st.session_state.sim_tick += 1
     t = st.session_state.sim_tick
     
     # --- MOISTURE SIMULATION LOGIC ---
-    # This math fakes natural drying out and rapid watering spikes over time
     if st.session_state.watering_active:
-        # Rapidly increase moisture during watering phase
         last_moisture = st.session_state.history[-1]["Moisture (%)"] if st.session_state.history else 35
         live_reading = min(100, last_moisture + int(math.sin(t) * 5) + 12)
     else:
-        # Gradually decrease moisture during dry-down phase
         last_moisture = st.session_state.history[-1]["Moisture (%)"] if st.session_state.history else 60
         live_reading = max(0, last_moisture - int(math.cos(t) * 2) - 3)
 
-    # --- STATE MATRIX PROCESSING ---
-    if live_reading <= 20:
+    # --- STATE PROCESSING MATRIX (USES SLIDER VARIABLES) ---
+    if live_reading <= dry_threshold:
         sys_state = "CRITICAL: DRY START"
-        alert_banner.error(f"🚨 SYSTEM CRITICAL STATE TRIGGERED: [{sys_state}] - Soil is parched. Activating irrigation pump...")
-        metric_delta = "- CRITICAL LOW"
+        alert_banner.error(f"🚨 STATE: [{sys_state}] - Soil below configured safe limit ({dry_threshold}%). Pump ON.")
+        metric_delta = f"- BELOW {dry_threshold}%"
         color_mode = "inverse"
-        st.session_state.watering_active = True  # Auto-start watering when dry
+        st.session_state.watering_active = True
         
-    elif live_reading >= 80:
+    elif live_reading >= wet_threshold:
         sys_state = "CRITICAL: WET STOP"
-        alert_banner.warning(f"🛑 AUTOMATED CONTROL INTERVENTION: [{sys_state}] - Soil saturated. Shutting down pump.")
-        metric_delta = "+ SATURATION LIMIT"
+        alert_banner.warning(f"🛑 STATE: [{sys_state}] - Soil reached ceiling boundary ({wet_threshold}%). Pump OFF.")
+        metric_delta = f"+ ABOVE {wet_threshold}%"
         color_mode = "normal"
-        st.session_state.watering_active = False # Auto-stop watering when saturated
+        st.session_state.watering_active = False
         
     else:
-        if st.session_state.watering_active:
-            sys_state = "PUMP ACTIVE - WATERING IN PROGRESS"
-            alert_banner.info(f"💦 SYSTEM STATUS: [{sys_state}] - Filling grid reservoir.")
-            metric_delta = "🌊 INCREASING"
-            color_mode = "off"
-        else:
-            sys_state = "NOMINAL OPERATION - NATURAL DRYING"
-            alert_banner.success(f"✅ TELEMETRY LINK HEALTHY: [{sys_state}]")
-            metric_delta = "🍂 DECREASING"
-            color_mode = "off"
+        sys_state = "PUMP ACTIVE" if st.session_state.watering_active else "NOMINAL OPERATION"
+        alert_banner.success(f"✅ TELEMETRY LINK ACTIVE: [{sys_state}]")
+        metric_delta = "🌊 INCREASING" if st.session_state.watering_active else "🍂 DECREASING"
+        color_mode = "off"
 
-    # --- STREAM LOGGING ARRAY MANAGEMENT ---
-    timestamp = time.strftime('%H:%M:%S')
-    st.session_state.history.append({"System Time": timestamp, "Moisture (%)": live_reading})
+    # --- SAVE PAYLOAD TO DISK DATABASE ---
+    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+    new_data = {
+        "Timestamp": timestamp, 
+        "Moisture (%)": live_reading, 
+        "State": sys_state,
+        "Dry_Limit_Set": dry_threshold,
+        "Wet_Limit_Set": wet_threshold
+    }
+    new_row_df = pd.DataFrame([new_data])
     
-    # Limit chart memory viewport window to the last 30 intervals
+    if not os.path.exists(CSV_FILE):
+        new_row_df.to_csv(CSV_FILE, index=False)
+    else:
+        new_row_df.to_csv(CSV_FILE, mode='a', header=False, index=False)
+
+    # --- PROCESS CHART MEMORY WINDOW ---
+    st.session_state.history.append({"System Time": time.strftime('%H:%M:%S'), "Moisture (%)": live_reading})
     if len(st.session_state.history) > 30:
         st.session_state.history.pop(0)
-        
-    df = pd.DataFrame(st.session_state.history)
+    df_chart = pd.DataFrame(st.session_state.history)
 
-    # --- PUSH LIVE METRICS TO DISPLAY ---
+    # --- READ COMPLETE DATASET AND SLICE LAST 10 ROWS ---
+    all_data_df = pd.read_csv(CSV_FILE)
+    last_10_df = all_data_df.tail(10).iloc[::-1]
+    total_accumulated_rows = len(all_data_df)
+
+    # --- RENDER TELEMETRY PLUGINS ---
     with metric_spot.container():
-        st.metric(
-            label="MOCK_SENSOR_NODE_01", 
-            value=f"{live_reading} %", 
-            delta=metric_delta, 
-            delta_color=color_mode
-        )
+        st.metric(label="MOCK_SENSOR_NODE_01", value=f"{live_reading} %", delta=metric_delta, delta_color=color_mode)
         
     with status_spot.container():
-        pump_status = "ON (Streaming Water)" if st.session_state.watering_active else "OFF (Closed Valve)"
         st.code(f"""
-Telemetry Mode: MOCK_SIMULATOR
-Active State  : {sys_state}
-Relay Switch  : {pump_status}
-Packet Clock  : {t} cycles
-Min Window Val: {df['Moisture (%)'].min()}%
-Max Window Val: {df['Moisture (%)'].max()}%
+Telemetry Mode : MOCK_SIMULATOR
+Active State   : {sys_state}
+Dry Trigger Set: {dry_threshold}%
+Wet Trigger Set: {wet_threshold}%
+Total Database : {total_accumulated_rows} rows saved
         """, language="yaml")
         
     with chart_spot.container():
-        st.line_chart(df.set_index("System Time"), height=280)
+        st.line_chart(df_chart.set_index("System Time"), height=230)
         
-    # Screen refresh stream tick rate (approx 1 second for snappy testing)
+    with table_spot.container():
+        st.dataframe(last_10_df, use_container_width=True)
+
+    # --- CONVERT COMPLETE LOG FOR DOWNLOAD LINK ---
+    csv_data = all_data_df.to_csv(index=False).encode('utf-8')
+    with download_spot.container():
+        st.download_button(
+            label="📥 Download Complete CSV Log",
+            data=csv_data,
+            file_name=f"telemetry_export_{time.strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+            key="csv_download_btn"
+        )
+        
+    # Execution clock rate interval (1 second)
     time.sleep(1)
