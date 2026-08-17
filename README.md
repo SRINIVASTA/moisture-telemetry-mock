@@ -15,6 +15,7 @@ A real-time, interactive IoT telemetry simulation dashboard built with **Streaml
 ---
 
 ## 🛠️ System Architecture & Mechanics
+---
 
 ┌──────────────────────────┐
 │   Streamlit Web Interface│
@@ -41,6 +42,8 @@ A real-time, interactive IoT telemetry simulation dashboard built with **Streaml
                   ┌──────────────┐
                   │  Save to Disk│
                   └──────────────┘
+---
+
 1. **State Machine Logic**:
    * **`Moisture <= Dry Threshold`**: Triggers a `CRITICAL: DRY START` alert status and switches the pump infrastructure **ON**.
    * **`Moisture >= Wet Threshold`**: Triggers a `CRITICAL: WET STOP` warning safety threshold and switches the pump infrastructure **OFF**.
