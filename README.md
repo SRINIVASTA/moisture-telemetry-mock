@@ -16,17 +16,17 @@ A real-time, interactive IoT telemetry simulation dashboard built with **Streaml
 
 ## 🛠️ System Architecture & Mechanics
 
-```text
-🛰️ TELEMETRY SYSTEM MAIN PLATFORM 
- │
- ├── ⚙️ [SIDEBAR CONTROL CANVAS] 
- │    └── User clicks "Clear & Reset" 
- │         └── 💥 Disk Wiping Process (Deletes telemetry_log.csv)
- │
- └── ⚡ [REAL-TIME PIPELINE ENGINE] 
-      └── Dynamic Data Stream Triggered (1Hz Frequency)
-           └── 📊 Moisture State Diagnostic Matrix
-                └── 💾 File System Aggregation (Appends rows & saves back to disk)
+```mermaid
+graph TD
+    UI["🛰️ Telemetry Main Platform"] --> Sidebar["⚙️ Sidebar Control Canvas"]
+    UI --> Engine["⚡ Real-Time Pipeline Engine"]
+    
+    Sidebar --> Clear["User clicks Clear & Reset"]
+    Clear --> Wipe["💥 Disk Wiping Process: Deletes telemetry_log.csv"]
+    
+    Engine --> Stream["Dynamic Data Stream Triggered: 1Hz Frequency"]
+    Stream --> Matrix["📊 Moisture State Diagnostic Matrix"]
+    Matrix --> Storage["💾 File System Aggregation: Appends rows to disk"]
 ```
 
 ### 🧠 State Machine Logic
