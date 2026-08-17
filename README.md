@@ -16,32 +16,26 @@ A real-time, interactive IoT telemetry simulation dashboard built with **Streaml
 
 ## 🛠️ System Architecture & Mechanics
 ---
+graph TD
+    %% Main Node
+    UI["🛰️ Streamlit Web Interface"] --> Control["⚙️ Sidebar Logs & Controls"]
+    UI --> Engine["⚡ Stream Loop (1Hz Engine)"]
 
-┌──────────────────────────┐
-│   Streamlit Web Interface│
-└────────────┬─────────────┘
-             │
- ┌───────────┴───────────┐
- ▼                       ▼
-┌──────────────┐  ┌──────────────┐
-│ Sidebar Logs │  │ Stream Loop  │
-│  & Controls  │  │ (1Hz Engine) │
-└──────┬───────┘  └──────┬───────┘
-       │                 │
-       ▼                 ▼
-┌──────────────┐  ┌──────────────┐
-│ Clear/Reset  │  │ State Engine │
-└──────┬───────┘  └──────┬───────┘
-       │                 │
-       ▼                 ▼
-┌──────────────┐  ┌──────────────┐
-│  Delete CSV  │  │ Append Data  │
-└──────────────┘  └──────┬───────┘
-                         │
-                         ▼
-                  ┌──────────────┐
-                  │  Save to Disk│
-                  └──────────────┘
+    %% Sidebar Actions
+    Control --> Reset["🗑️ Clear/Reset Action"]
+    Reset --> DiskWipe["🔥 Delete CSV from Disk"]
+
+    %% Stream Processing Actions
+    Engine --> State["🧠 State Processing Engine"]
+    State --> Append["📝 Append Data Array"]
+    Append --> Save["💾 Save to Disk (CSV Log)"]
+
+    %% Styling and coloring for better visual hierarchy
+    style UI fill:#00ff66,stroke:#333,stroke-width:2px,color:#000
+    style Engine fill:#17a2b8,stroke:#333,stroke-width:1px,color:#fff
+    style Control fill:#ffc107,stroke:#333,stroke-width:1px,color:#000
+    style DiskWipe fill:#dc3545,stroke:#333,stroke-width:1px,color:#fff
+    style Save fill:#28a745,stroke:#333,stroke-width:1px,color:#fff
 ---
 
 1. **State Machine Logic**:
