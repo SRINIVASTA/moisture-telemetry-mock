@@ -1,0 +1,7 @@
+[FUNCTIONAL PROFILE & PURPOSE]
+• Purpose       : Virtual simulation sandbox for automated irrigation logic
+• Requirements  : None (fully virtual)
+• Target Use    : IoT education, demoing dashboarding and logic controls
+
+[INTERACTIVE DASHBOARD CONTROLS]
+• Controls      : Toggle Data, Adjust Threshold Sliders, Hard Reset, Export CSV
