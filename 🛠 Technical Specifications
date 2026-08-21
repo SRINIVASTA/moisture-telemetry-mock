@@ -1,0 +1,13 @@
+[SYSTEM ARCHITECTURE & CORE PIPELINE]
+• Frameworks    : Python 3.8+, Streamlit, Pandas
+• Data Feed     : Simulated 1Hz (1-second) live hardware loop
+• Data Handling : Streamlit Session State (st.session_state) for real-time metrics
+
+[AUTOMATED STATE MACHINE CONTROL LOGIC]
+• Dry Condition : Moisture ≤ Threshold → Alert 'CRITICAL: DRY START' & Pump ON
+• Wet Condition : Moisture ≥ Threshold → Alert 'CRITICAL: WET STOP' & Pump OFF
+• Safe Zone     : Moisture between thresholds maintains existing state
+
+[LOCAL DATA FILE SCHEMATICS]
+• Log File      : telemetry_log.csv (Dynamic, per-second appending)
+• Schema        : Timestamp, Moisture (%), State, Dry_Limit_Set, Wet_Limit_Set
