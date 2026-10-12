@@ -6,18 +6,18 @@ import os
 import paho.mqtt.client as mqtt
 
 # Set widescreen layout
-st.set_page_config(page_title="Telemetry Core - Automated Control", layout="wide")
+st.set_page_config(page_title="Telemetry Core - Custom Thresholds", layout="wide")
 
 st.markdown("""
     <style>
     .telemetry-title { text-align: center; font-family: 'Courier New', monospace; font-weight: bold; color: #00FF66; }
     </style>
-    <h1 class='telemetry-title'>🛰️ TELEMETRY SYSTEM CORE (AUTOMATED CONTROL)</h1>
+    <h1 class='telemetry-title'>🛰️ TELEMETRY SYSTEM CORE (DYNAMIC CONTROL)</h1>
     """, unsafe_allow_html=True)
 
 CSV_FILE = "telemetry_log.csv"
 
-# 1. Initialize State Metrics cleanly
+# 1. Initialize State Metrics
 if "history" not in st.session_state:
     st.session_state.history = []
 if "sim_tick" not in st.session_state:
@@ -26,17 +26,12 @@ if "watering_active" not in st.session_state:
     st.session_state.watering_active = False
 if "cloud_moisture" not in st.session_state:
     st.session_state.cloud_moisture = 45
-if "auto_stream_active" not in st.session_state:
-    st.session_state.auto_stream_active = False
 
-# 2. MQTT Cloud Signal Broker Callback
+# 2. MQTT Cloud Signal Broker (Perfectly matches the Wokwi server pipeline address)
 def on_message(client, userdata, message):
     try:
         # Decode the live moisture percentage numbers passing over the internet
-        val = int(message.payload.decode("utf-8"))
-        st.session_state.cloud_moisture = val
-        # AUTOMATION STEP: Wake up telemetry recording loops instantly upon receiving data
-        st.session_state.auto_stream_active = True
+        st.session_state.cloud_moisture = int(message.payload.decode("utf-8"))
     except Exception:
         pass
 
@@ -44,7 +39,7 @@ if "mqtt_initialized" not in st.session_state:
     try:
         mqtt_client = mqtt.Client()
         mqtt_client.on_message = on_message
-        # Connecting to public HiveMQ cluster matching the ESP32 code structure
+        # Establishes clean connection to the public HiveMQ Broker cluster matching Wokwi
         mqtt_client.connect("://hivemq.com", 1883, 60)
         mqtt_client.subscribe("sfic2026/krishitwin/moisture")
         mqtt_client.loop_start() # Launches real-time background tracking threads
@@ -55,12 +50,7 @@ if "mqtt_initialized" not in st.session_state:
 # 3. Operations Panel Layout (Houses Controls and GitHub Link)
 with st.sidebar:
     st.header("🎮 System Operations")
-    
-    # Live visual pipeline link indicator
-    if st.session_state.auto_stream_active:
-        st.success("🟢 TELEMETRY PIPELINE LIVE")
-    else:
-        st.warning("⏳ WAITING FOR WOKWI NODE...")
+    run_simulation = st.toggle("🔌 Activate Telemetry Stream", value=False)
     
     if st.button("🗑️ Clear Log & Reset History", type="primary"):
         if os.path.exists(CSV_FILE):
@@ -68,7 +58,6 @@ with st.sidebar:
         st.session_state.history = []
         st.session_state.sim_tick = 0
         st.session_state.watering_active = False
-        st.session_state.auto_stream_active = False
         st.toast("Telemetry logs cleared!", icon="🔥")
         st.rerun()
 
@@ -105,7 +94,7 @@ with left_pane:
 
 with right_pane:
     st.subheader("🔌 Interactive ECE Hardware Node")
-    # Embedded your exact Wokwi canvas link directly
+    # Embedded your exact public Wokwi project canvas link directly
     wokwi_embed_url = "https://wokwi.com"
     st.components.v1.iframe(wokwi_embed_url, height=450, scrolling=False)
 
@@ -125,25 +114,26 @@ def render_display_state(live_reading, sys_state, metric_delta, color_mode, tota
     with table_spot.container():
         st.dataframe(last_10_df, use_container_width=True)
 
-# 5. Core Data Infrastructure Processing
 all_data_exists = os.path.exists(CSV_FILE) and os.path.getsize(CSV_FILE) > 0
 all_data_df = pd.read_csv(CSV_FILE) if all_data_exists else pd.DataFrame(columns=["Timestamp", "Moisture (%)", "State", "Dry_Limit_Set", "Wet_Limit_Set"])
 total_accumulated_rows = len(all_data_df)
 last_10_df = all_data_df.tail(10).iloc[::-1] if not all_data_df.empty else all_data_df
 df_chart = pd.DataFrame(st.session_state.history)
 
-# 6. Automated Pipeline Processing Logic
-if not st.session_state.auto_stream_active:
-    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Click the green play button inside the Wokwi hardware node on the right to wake up the network stream automatically.")
+# 5. Non-Blocking Live Runtime Architecture
+if not run_simulation:
+    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Click the play button inside the hardware node on the right, then toggle the sidebar switch to sync live data.")
     render_display_state(st.session_state.cloud_moisture, "IDLE / SUSPENDED", "🚫 PAUSED", "off", total_accumulated_rows, df_chart, last_10_df)
     
-    # Intelligently wait a moment and check back without trapping the application logic
+    # Non-blocking check fallback to let MQTT processor catch network thread flags smoothly
     time.sleep(1)
     st.rerun()
 
 else:
     st.session_state.sim_tick += 1
     t = st.session_state.sim_tick
+    
+    # Capture live telemetry values arriving straight over the cloud network bridge
     live_reading = st.session_state.cloud_moisture
 
     if live_reading <= dry_threshold:
@@ -164,7 +154,6 @@ else:
         metric_delta = "🌊 INCREASING" if st.session_state.watering_active else "🍂 DECREASING"
         color_mode = "off"
 
-    # Database File Logging Row Generation
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     new_row_df = pd.DataFrame([{"Timestamp": timestamp, "Moisture (%)": live_reading, "State": sys_state, "Dry_Limit_Set": dry_threshold, "Wet_Limit_Set": wet_threshold}])
     if not os.path.exists(CSV_FILE):
@@ -172,13 +161,11 @@ else:
     else:
         new_row_df.to_csv(CSV_FILE, mode='a', header=False, index=False)
 
-    # Timeline Chart Preparation
     st.session_state.history.append({"System Time": time.strftime('%H:%M:%S'), "Moisture (%)": live_reading})
     if len(st.session_state.history) > 30: 
         st.session_state.history.pop(0)
     df_chart = pd.DataFrame(st.session_state.history)
 
-    # Reload logs for user visualization
     all_data_df = pd.read_csv(CSV_FILE)
     last_10_df = all_data_df.tail(10).iloc[::-1]
     total_accumulated_rows = len(all_data_df)
