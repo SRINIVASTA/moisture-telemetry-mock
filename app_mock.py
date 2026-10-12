@@ -27,7 +27,7 @@ if "watering_active" not in st.session_state:
 if "cloud_moisture" not in st.session_state:
     st.session_state.cloud_moisture = 45
 
-# 2. MQTT Cloud Signal Broker (Perfectly matches the Wokwi server pipeline address)
+# 2. MQTT Cloud Signal Broker (FIXED: Perfectly matches the Wokwi server pipeline address)
 def on_message(client, userdata, message):
     try:
         # Decode the live moisture percentage numbers passing over the internet
@@ -39,8 +39,8 @@ if "mqtt_initialized" not in st.session_state:
     try:
         mqtt_client = mqtt.Client()
         mqtt_client.on_message = on_message
-        # Establishes clean connection to the public HiveMQ Broker cluster matching Wokwi
-        mqtt_client.connect("://hivemq.com", 1883, 60)
+        # FIXED: Complete visible cloud address broker string integrated
+        mqtt_client.connect("broker.hivemq.com", 1883, 60)
         mqtt_client.subscribe("sfic2026/krishitwin/moisture")
         mqtt_client.loop_start() # Launches real-time background tracking threads
         st.session_state.mqtt_initialized = True
@@ -94,8 +94,8 @@ with left_pane:
 
 with right_pane:
     st.subheader("🔌 Interactive ECE Hardware Node")
-    # Embedded your exact public Wokwi project canvas link directly
-    wokwi_embed_url = "https://wokwi.com"
+    # FIXED: Embedded your exact Wokwi canvas link directly
+    wokwi_embed_url = "https://wokwi.com/projects/477695135339057153"
     st.components.v1.iframe(wokwi_embed_url, height=450, scrolling=False)
 
 st.subheader("📋 Live Log Terminal (Last 10 Rows)")
@@ -120,12 +120,12 @@ total_accumulated_rows = len(all_data_df)
 last_10_df = all_data_df.tail(10).iloc[::-1] if not all_data_df.empty else all_data_df
 df_chart = pd.DataFrame(st.session_state.history)
 
-# 5. Non-Blocking Live Runtime Architecture
+# 5. Fixed Runtime Pipeline Processing Logic
 if not run_simulation:
     alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Click the play button inside the hardware node on the right, then toggle the sidebar switch to sync live data.")
     render_display_state(st.session_state.cloud_moisture, "IDLE / SUSPENDED", "🚫 PAUSED", "off", total_accumulated_rows, df_chart, last_10_df)
     
-    # Non-blocking check fallback to let MQTT processor catch network thread flags smoothly
+    # Safely yield runtime to background MQTT collection routines before refreshing
     time.sleep(1)
     st.rerun()
 
