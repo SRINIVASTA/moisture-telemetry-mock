@@ -27,7 +27,7 @@ if "watering_active" not in st.session_state:
 if "cloud_moisture" not in st.session_state:
     st.session_state.cloud_moisture = 45
 
-# 2. MQTT Cloud Stream Event Triggers
+# 2. MQTT Cloud Stream Event Triggers (Corrected Server Endpoints)
 def on_message(client, userdata, message):
     try:
         st.session_state.cloud_moisture = int(message.payload.decode("utf-8"))
@@ -38,7 +38,7 @@ if "mqtt_initialized" not in st.session_state:
     try:
         mqtt_client = mqtt.Client()
         mqtt_client.on_message = on_message
-        mqtt_client.connect("://hivemq.com", 1883, 60)
+        mqtt_client.connect("broker.hivemq.com", 1883, 60)
         mqtt_client.subscribe("sfic2026/krishitwin/moisture")
         mqtt_client.loop_start()
         st.session_state.mqtt_initialized = True
@@ -61,9 +61,8 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("🛰️ Project Ecosystem Gateway")
-    st.write("Open the physical node circuit alongside this app page:")
+    st.write("Review the complete project architectures:")
     
-    # Save the public Wokwi project URL in the variable below
     wokwi_public_link = "https://wokwi.com"
     github_repo_link = "https://github.com"
     
@@ -102,8 +101,10 @@ def render_display_state(live_reading, sys_state, metric_delta, color_mode, tota
     with status_spot.container():
         st.code(f"Telemetry Mode : MQTT_CLOUD_STREAM\nActive State   : {sys_state}\nDry Trigger Set: {dry_threshold}%\nWet Trigger Set: {wet_threshold}%\nTotal Database : {total_rows} rows saved", language="yaml")
     with chart_spot.container():
-        if not df_chart.empty: st.line_chart(df_chart.set_index("System Time"), height=230)
-        else: st.info("No timeline data loaded.")
+        if not df_chart.empty: 
+            st.line_chart(df_chart.set_index("System Time"), height=230)
+        else: 
+            st.info("No timeline data loaded.")
     with table_spot.container():
         st.dataframe(last_10_df, use_container_width=True)
 
@@ -145,10 +146,14 @@ while run_simulation:
 
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     new_row_df = pd.DataFrame([{"Timestamp": timestamp, "Moisture (%)": live_reading, "State": sys_state, "Dry_Limit_Set": dry_threshold, "Wet_Limit_Set": wet_threshold}])
-    new_row_df.to_csv(CSV_FILE, index=False) if not os.path.exists(CSV_FILE) else new_row_df.to_csv(CSV_FILE, mode='a', header=False, index=False)
+    if not os.path.exists(CSV_FILE):
+        new_row_df.to_csv(CSV_FILE, index=False)
+    else:
+        new_row_df.to_csv(CSV_FILE, mode='a', header=False, index=False)
 
     st.session_state.history.append({"System Time": time.strftime('%H:%M:%S'), "Moisture (%)": live_reading})
-    if len(st.session_state.history) > 30: st.session_state.history.pop(0)
+    if len(st.session_state.history) > 30: 
+        st.session_state.history.pop(0)
     df_chart = pd.DataFrame(st.session_state.history)
 
     all_data_df = pd.read_csv(CSV_FILE)
