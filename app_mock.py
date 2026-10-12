@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import math
 import os
-import paho.mqtt.client as mqtt  # Ensure 'paho-mqtt' is written inside requirements.txt file
+import paho.mqtt.client as mqtt  # Installed via unified requirements.txt ledger
 
 # Set widescreen layout
 st.set_page_config(page_title="Telemetry Core - Custom Thresholds", layout="wide")
@@ -27,7 +27,7 @@ if "watering_active" not in st.session_state:
 if "cloud_moisture" not in st.session_state:
     st.session_state.cloud_moisture = 45
 
-# 2. MQTT Cloud Stream Event Triggers (Corrected Server Endpoints)
+# 2. MQTT Cloud Stream Event Triggers 
 def on_message(client, userdata, message):
     try:
         st.session_state.cloud_moisture = int(message.payload.decode("utf-8"))
@@ -38,14 +38,14 @@ if "mqtt_initialized" not in st.session_state:
     try:
         mqtt_client = mqtt.Client()
         mqtt_client.on_message = on_message
-        mqtt_client.connect("broker.hivemq.com", 1883, 60)
+        mqtt_client.connect("://hivemq.com", 1883, 60)
         mqtt_client.subscribe("sfic2026/krishitwin/moisture")
         mqtt_client.loop_start()
         st.session_state.mqtt_initialized = True
     except Exception as e:
         st.sidebar.error(f"⚠️ Cloud sync issue: {e}")
 
-# 3. Operations Panel Layout
+# 3. Operations Panel Layout (Houses Controls and GitHub Link)
 with st.sidebar:
     st.header("🎮 System Operations")
     run_simulation = st.toggle("🔌 Activate Telemetry Stream", value=False)
@@ -60,13 +60,8 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.header("🛰️ Project Ecosystem Gateway")
-    st.write("Review the complete project architectures:")
-    
-    wokwi_public_link = "https://wokwi.com"
+    st.header("📂 Code Repository")
     github_repo_link = "https://github.com"
-    
-    st.markdown(f"🔗 **[Launch Virtual IoT Node (Tab 1)]({wokwi_public_link})**")
     st.markdown(f"📂 **[View ECE Blueprints (GitHub)]({github_repo_link})**")
     
     st.markdown("---")
@@ -78,19 +73,28 @@ with st.sidebar:
     st.header("💾 Storage Manager")
     download_spot = st.empty()
 
-# 4. View Components
+# 4. Main Layout Grid Components (Split Screen: Left for Telemetry, Right for Wokwi Board)
 alert_banner = st.empty()
-col1, col2, col3 = st.columns(3)
+left_pane, right_pane = st.columns([3, 2])
 
-with col1:
-    st.subheader("📊 Current Node")
-    metric_spot = st.empty()
-with col2:
-    st.subheader("⚡ System Diagnostics")
-    status_spot = st.empty()
-with col3:
+with left_pane:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("📊 Current Node")
+        metric_spot = st.empty()
+    with col2:
+        st.subheader("⚡ System Diagnostics")
+        status_spot = st.empty()
+        
     st.subheader("📈 Real-Time Stream Timeline")
     chart_spot = st.empty()
+
+with right_pane:
+    st.subheader("🔌 Interactive ECE Hardware Node")
+    # This embeds her actual visual Wokwi workspace canvas directly into the dashboard page!
+    # Bypasses the login prompt by using the clean public player /embed endpoint
+    wokwi_embed_url = "https://wokwi.com"
+    st.components.v1.iframe(wokwi_embed_url, height=450, scrolling=False)
 
 st.subheader("📋 Live Log Terminal (Last 10 Rows)")
 table_spot = st.empty()
@@ -115,7 +119,7 @@ last_10_df = all_data_df.tail(10).iloc[::-1] if not all_data_df.empty else all_d
 df_chart = pd.DataFrame(st.session_state.history)
 
 if not run_simulation:
-    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Open Tab 1, boot the simulator, then toggle stream switch here to sync live data.")
+    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Click the play button inside the hardware node, then toggle the sidebar switch to sync live data.")
     render_display_state(st.session_state.cloud_moisture, "IDLE / SUSPENDED", "🚫 PAUSED", "off", total_accumulated_rows, df_chart, last_10_df)
 
 # 5. Live Runtime Pipeline Loop
@@ -123,7 +127,6 @@ while run_simulation:
     st.session_state.sim_tick += 1
     t = st.session_state.sim_tick
     
-    # Read telemetry dynamically captured from the online network bridge
     live_reading = st.session_state.cloud_moisture
 
     if live_reading <= dry_threshold:
