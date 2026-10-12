@@ -17,7 +17,7 @@ st.markdown("""
 
 CSV_FILE = "telemetry_log.csv"
 
-# 1. Initialize State Metrics (FIXED: Preserved list brackets)
+# 1. Initialize State Metrics
 if "history" not in st.session_state:
     st.session_state.history = []
 if "sim_tick" not in st.session_state:
@@ -27,7 +27,7 @@ if "watering_active" not in st.session_state:
 if "cloud_moisture" not in st.session_state:
     st.session_state.cloud_moisture = 45
 
-# 2. MQTT Cloud Signal Broker (FIXED: Explicitly set to ://hivemq.com)
+# 2. MQTT Cloud Signal Broker (Perfectly matches the Wokwi server pipeline address)
 def on_message(client, userdata, message):
     try:
         # Decode the live moisture percentage numbers passing over the internet
@@ -39,8 +39,8 @@ if "mqtt_initialized" not in st.session_state:
     try:
         mqtt_client = mqtt.Client()
         mqtt_client.on_message = on_message
-        # Connected to the explicit public broker matching your ESP32 setup
-        mqtt_client.connect("://hivemq.com", 1883, 60)
+        # Connecting to public HiveMQ cluster matching the ESP32 code structure
+        mqtt_client.connect("broker.hivemq.com", 1883, 60)
         mqtt_client.subscribe("sfic2026/krishitwin/moisture")
         mqtt_client.loop_start() # Launches real-time background tracking threads
         st.session_state.mqtt_initialized = True
@@ -94,8 +94,8 @@ with left_pane:
 
 with right_pane:
     st.subheader("🔌 Interactive ECE Hardware Node")
-    # Embedded your exact public Wokwi project canvas link directly
-    wokwi_embed_url = "https://wokwi.com"
+    # Embedded your exact Wokwi canvas link directly
+    wokwi_embed_url = "https://wokwi.com/projects/477695135339057153"
     st.components.v1.iframe(wokwi_embed_url, height=450, scrolling=False)
 
 st.subheader("📋 Live Log Terminal (Last 10 Rows)")
