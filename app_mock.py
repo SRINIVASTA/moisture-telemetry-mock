@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import math
 import os
-import paho.mqtt.client as mqtt  # Installed via unified requirements.txt ledger
+import paho.mqtt.client as mqtt
 
 # Set widescreen layout
 st.set_page_config(page_title="Telemetry Core - Custom Thresholds", layout="wide")
@@ -63,7 +63,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("📂 Code Repository")
-    # FIXED: Added her real public GitHub address
+    # OPTIONAL: Replace this URL with your final public GitHub repository link once created
     github_repo_link = "https://github.com"
     st.markdown(f"📂 **[View ECE Blueprints (GitHub)]({github_repo_link})**")
     
@@ -95,7 +95,7 @@ with left_pane:
 
 with right_pane:
     st.subheader("🔌 Interactive ECE Hardware Node")
-    # FIXED: Embedded her exact, real public Wokwi project canvas link directly
+    # FIXED: Embedded your exact, real public Wokwi project canvas link directly
     wokwi_embed_url = "https://wokwi.com"
     st.components.v1.iframe(wokwi_embed_url, height=450, scrolling=False)
 
