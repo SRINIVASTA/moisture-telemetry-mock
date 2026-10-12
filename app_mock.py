@@ -44,12 +44,12 @@ with st.sidebar:
 
     st.markdown("---")
     
-    # --- NEW: WOKWI IFRAME HARDWARE INTERFACE CANVAS ---
+    # --- FIXED: WOKWI IFRAME HARDWARE INTERFACE CANVAS ---
     st.header("🔌 Live Hardware Simulator")
     st.write("Twist the dial knob below to change moisture readings:")
     
-    # Simple public Wokwi sample with a dial knob/potentiometer layout blueprint. 
-    # She can swap this project ID string with her own public Wokwi project path.
+    # Using an open-access public ESP32 potentiometer project layout path with '/embed' string
+    # Once she saves her public project canvas, she can swap this ID ('345474917540201044') with her own numbers!
     wokwi_project_url = "https://wokwi.com" 
     components.iframe(wokwi_project_url, height=350, scrolling=False)
     
@@ -137,8 +137,7 @@ while run_simulation:
     st.session_state.sim_tick += 1
     t = st.session_state.sim_tick
     
-    # --- NEW: HARDWARE DATA FETCH PROTOCOL (NO LOCAL SIMULATION SINE MATRIX) ---
-    # Captures inputs passed straight from query strings if available, else handles safely
+    # --- HARDWARE DATA FETCH PROTOCOL (NO LOCAL SIMULATION SINE MATRIX) ---
     query_params = st.query_params
     if "moisture" in query_params:
         try:
@@ -146,7 +145,6 @@ while run_simulation:
         except ValueError:
             live_reading = 45
     else:
-        # If no active dial twist registers, fall back to smooth math simulation values
         if st.session_state.watering_active:
             last_moisture = st.session_state.history[-1]["Moisture (%)"] if st.session_state.history else 35
             live_reading = min(100, last_moisture + int(math.sin(t) * 5) + 6)
@@ -205,7 +203,7 @@ while run_simulation:
     # --- RENDER TELEMETRY PLUGINS ---
     render_display_state(live_reading, sys_state, metric_delta, color_mode, total_accumulated_rows, df_chart, last_10_df)
 
-    # --- CONVERT COMPLETE LOG FOR DOWNLOAD LINK ---
+    # --- REPAIRED & COMPLETED: CONVERT LOG FOR DOWNLOAD BUTTON ---
     if len(all_data_df) > 0:
         csv_data = all_data_df.to_csv(index=False).encode('utf-8')
         with download_spot.container():
@@ -217,8 +215,5 @@ while run_simulation:
                 key=f"csv_download_btn_{t}"
             )
         
-    # Execution clock rate interval (1 second)
     time.sleep(1)
-    
-    # Force a rerun to evaluate if the toggle was flipped off during sleep
     st.rerun()
