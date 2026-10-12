@@ -3,7 +3,6 @@ import pandas as pd
 import time
 import math
 import os
-import streamlit.components.v1 as components  # Required for Wokwi iframe execution
 
 # Set widescreen layout
 st.set_page_config(page_title="Telemetry Core - Custom Thresholds", layout="wide")
@@ -25,7 +24,7 @@ if "sim_tick" not in st.session_state:
 if "watering_active" not in st.session_state:
     st.session_state.watering_active = False
 
-# 2. Sidebar Configuration (Houses Sliders and Download Button)
+# 2. Sidebar Configuration (Houses Operation Controls and Navigation Links)
 with st.sidebar:
     st.header("🎮 System Operations")
     
@@ -44,14 +43,16 @@ with st.sidebar:
 
     st.markdown("---")
     
-    # --- FIXED: WOKWI IFRAME HARDWARE INTERFACE CANVAS ---
-    st.header("🔌 Live Hardware Simulator")
-    st.write("Twist the dial knob below to change moisture readings:")
+    # --- TWO-TAB ECOSYSTEM GATEWAY LINKS (REPLACES THE MESSY LOGIN IFRAME) ---
+    st.header("🛰️ Project Gateway")
+    st.write("Open the virtual ECE node board in a new window tab:")
     
-    # Using an open-access public ESP32 potentiometer project layout path with '/embed' string
-    # Once she saves her public project canvas, she can swap this ID ('345474917540201044') with her own numbers!
-    wokwi_project_url = "https://wokwi.com" 
-    components.iframe(wokwi_project_url, height=350, scrolling=False)
+    # Replace the URL strings below with her finalized public Wokwi and GitHub paths
+    wokwi_public_link = "https://wokwi.com"
+    github_repo_link = "https://github.com"
+    
+    st.markdown(f"🔗 **[Launch Virtual IoT Node (Tab 1)]({wokwi_public_link})**")
+    st.markdown(f"📂 **[View ECE Blueprint Source (GitHub)]({github_repo_link})**")
     
     st.markdown("---")
     st.header("⚙️ Threshold Controls")
@@ -104,7 +105,7 @@ def render_display_state(live_reading, sys_state, metric_delta, color_mode, tota
         
     with status_spot.container():
         st.code(f"""
-Telemetry Mode : WOKWI_EMBED_LOOP
+Telemetry Mode : TWO_TAB_MOCK_LOOP
 Active State   : {sys_state}
 Dry Trigger Set: {dry_threshold}%
 Wet Trigger Set: {wet_threshold}%
@@ -128,8 +129,8 @@ last_10_df = all_data_df.tail(10).iloc[::-1] if not all_data_df.empty else all_d
 df_chart = pd.DataFrame(st.session_state.history)
 
 if not run_simulation:
-    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Flip the sidebar toggle to stream live embedded hardware data.")
-    current_moisture = st.session_state.history[-1]["Moisture (%)"] if st.session_state.history else 0
+    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Flip the sidebar toggle to stream live data.")
+    current_moisture = st.session_state.history[-1]["Moisture (%)"] if st.session_state.history else 45
     render_display_state(current_moisture, "IDLE / SUSPENDED", "🚫 PAUSED", "off", total_accumulated_rows, df_chart, last_10_df)
 
 # 4. Infinite Telemetry Pipeline Loop (Only activates if switch is ON)
@@ -137,7 +138,7 @@ while run_simulation:
     st.session_state.sim_tick += 1
     t = st.session_state.sim_tick
     
-    # --- HARDWARE DATA FETCH PROTOCOL (NO LOCAL SIMULATION SINE MATRIX) ---
+    # --- HARDWARE DATA FETCH PROTOCOL ---
     query_params = st.query_params
     if "moisture" in query_params:
         try:
@@ -145,6 +146,7 @@ while run_simulation:
         except ValueError:
             live_reading = 45
     else:
+        # Fallback math loop simulating node response profiles dynamically
         if st.session_state.watering_active:
             last_moisture = st.session_state.history[-1]["Moisture (%)"] if st.session_state.history else 35
             live_reading = min(100, last_moisture + int(math.sin(t) * 5) + 6)
@@ -203,7 +205,7 @@ while run_simulation:
     # --- RENDER TELEMETRY PLUGINS ---
     render_display_state(live_reading, sys_state, metric_delta, color_mode, total_accumulated_rows, df_chart, last_10_df)
 
-    # --- REPAIRED & COMPLETED: CONVERT LOG FOR DOWNLOAD BUTTON ---
+    # --- CONVERT COMPLETE LOG FOR DOWNLOAD LINK ---
     if len(all_data_df) > 0:
         csv_data = all_data_df.to_csv(index=False).encode('utf-8')
         with download_spot.container():
@@ -215,5 +217,8 @@ while run_simulation:
                 key=f"csv_download_btn_{t}"
             )
         
+    # Execution clock rate interval (1 second)
     time.sleep(1)
+    
+    # Force a rerun to evaluate status changes
     st.rerun()
