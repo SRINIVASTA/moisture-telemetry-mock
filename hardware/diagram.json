@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "author": "SRINIVASTA & Team",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-potentiometer", "id": "pot", "top": -80, "left": -120, "attrs": {} }
+  ],
+  "connections": [
+    [ "pot:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "pot:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "pot:SIG", "esp:34", "green", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}
