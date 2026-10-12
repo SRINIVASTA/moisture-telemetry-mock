@@ -17,7 +17,7 @@ st.markdown("""
 
 CSV_FILE = "telemetry_log.csv"
 
-# 1. Initialize State Metrics (Protected list syntax brackets)
+# 1. Initialize State Metrics
 if "history" not in st.session_state:
     st.session_state.history = []
 if "sim_tick" not in st.session_state:
@@ -27,7 +27,7 @@ if "watering_active" not in st.session_state:
 if "cloud_moisture" not in st.session_state:
     st.session_state.cloud_moisture = 45
 
-# 2. MQTT Cloud Signal Broker (Perfectly matches the Wokwi server pipeline address)
+# 2. MQTT Cloud Signal Broker (FIXED: Perfectly matches the Wokwi server pipeline address)
 def on_message(client, userdata, message):
     try:
         # Decode the live moisture percentage numbers passing over the internet
@@ -55,7 +55,7 @@ with st.sidebar:
     if st.button("🗑️ Clear Log & Reset History", type="primary"):
         if os.path.exists(CSV_FILE):
             os.remove(CSV_FILE)
-        st.session_state.history = []  # Protected list syntax brackets
+        st.session_state.history = []
         st.session_state.sim_tick = 0
         st.session_state.watering_active = False
         st.toast("Telemetry logs cleared!", icon="🔥")
@@ -94,8 +94,8 @@ with left_pane:
 
 with right_pane:
     st.subheader("🔌 Interactive ECE Hardware Node")
-    # Embedded your exact public Wokwi project canvas link directly
-    wokwi_embed_url = "https://wokwi.com"
+    # FIXED: Embedded your exact Wokwi canvas link directly
+    wokwi_embed_url = "https://wokwi.com/projects/477695135339057153"
     st.components.v1.iframe(wokwi_embed_url, height=450, scrolling=False)
 
 st.subheader("📋 Live Log Terminal (Last 10 Rows)")
@@ -120,16 +120,12 @@ total_accumulated_rows = len(all_data_df)
 last_10_df = all_data_df.tail(10).iloc[::-1] if not all_data_df.empty else all_data_df
 df_chart = pd.DataFrame(st.session_state.history)
 
-# 5. Non-Blocking Live Runtime Architecture
 if not run_simulation:
     alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Click the play button inside the hardware node on the right, then toggle the sidebar switch to sync live data.")
     render_display_state(st.session_state.cloud_moisture, "IDLE / SUSPENDED", "🚫 PAUSED", "off", total_accumulated_rows, df_chart, last_10_df)
-    
-    # Safely yield execution thread to background MQTT pipeline routines, then loop refresh
-    time.sleep(1)
-    st.rerun()
 
-else:
+# 5. Live Runtime Pipeline Loop
+while run_simulation:
     st.session_state.sim_tick += 1
     t = st.session_state.sim_tick
     
@@ -167,6 +163,7 @@ else:
     df_chart = pd.DataFrame(st.session_state.history)
 
     all_data_df = pd.read_csv(CSV_FILE)
+    # FIXED: Replaced structural index parenthesis with closing slice bracket ']'
     last_10_df = all_data_df.tail(10).iloc[::-1]
     total_accumulated_rows = len(all_data_df)
 
