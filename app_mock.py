@@ -48,7 +48,7 @@ with st.sidebar:
     st.write("Review the complete ECE hardware blueprints:")
     
     # Links point straight to her public GitHub repository code workspace
-    github_repo_link = "https://github.com"
+    github_repo_link = "https://github.com/SRINIVASTA/moisture-telemetry-mock"
     hardware_folder_link = "https://github.com/tree/main/hardware"
     
     st.markdown(f"📂 **[Open Hardware Folder blueprints]({hardware_folder_link})**")
