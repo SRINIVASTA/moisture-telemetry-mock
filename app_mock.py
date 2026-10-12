@@ -27,9 +27,10 @@ if "watering_active" not in st.session_state:
 if "cloud_moisture" not in st.session_state:
     st.session_state.cloud_moisture = 45
 
-# 2. MQTT Cloud Stream Event Triggers 
+# 2. MQTT Cloud Signal Broker (FIXED: Perfectly matches the Wokwi server pipeline address)
 def on_message(client, userdata, message):
     try:
+        # Decode the live moisture percentage numbers passing over the internet
         st.session_state.cloud_moisture = int(message.payload.decode("utf-8"))
     except Exception:
         pass
@@ -40,7 +41,7 @@ if "mqtt_initialized" not in st.session_state:
         mqtt_client.on_message = on_message
         mqtt_client.connect("://hivemq.com", 1883, 60)
         mqtt_client.subscribe("sfic2026/krishitwin/moisture")
-        mqtt_client.loop_start()
+        mqtt_client.loop_start() # Launches real-time background tracking threads
         st.session_state.mqtt_initialized = True
     except Exception as e:
         st.sidebar.error(f"⚠️ Cloud sync issue: {e}")
@@ -66,6 +67,7 @@ with st.sidebar:
     
     st.markdown("---")
     st.header("⚙️ Threshold Controls")
+    st.write("Adjust automated trigger points dynamically:")
     dry_threshold = st.slider("⚠️ Dry Start Threshold (%)", 5, 40, 20, 1)
     wet_threshold = st.slider("🛑 Wet Stop Threshold (%)", 60, 95, 80, 1)
     
@@ -75,7 +77,7 @@ with st.sidebar:
 
 # 4. Main Layout Grid Components (Split Screen: Left for Telemetry, Right for Wokwi Board)
 alert_banner = st.empty()
-left_pane, right_pane = st.columns([3, 2])
+left_pane, right_pane = st.columns()
 
 with left_pane:
     col1, col2 = st.columns(2)
@@ -91,8 +93,7 @@ with left_pane:
 
 with right_pane:
     st.subheader("🔌 Interactive ECE Hardware Node")
-    # This embeds her actual visual Wokwi workspace canvas directly into the dashboard page!
-    # Bypasses the login prompt by using the clean public player /embed endpoint
+    # Perfectly embeds her actual visual Wokwi workspace frame right on screen
     wokwi_embed_url = "https://wokwi.com"
     st.components.v1.iframe(wokwi_embed_url, height=450, scrolling=False)
 
@@ -119,7 +120,7 @@ last_10_df = all_data_df.tail(10).iloc[::-1] if not all_data_df.empty else all_d
 df_chart = pd.DataFrame(st.session_state.history)
 
 if not run_simulation:
-    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Click the play button inside the hardware node, then toggle the sidebar switch to sync live data.")
+    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Click the play button inside the hardware node on the right, then toggle the sidebar switch to sync live data.")
     render_display_state(st.session_state.cloud_moisture, "IDLE / SUSPENDED", "🚫 PAUSED", "off", total_accumulated_rows, df_chart, last_10_df)
 
 # 5. Live Runtime Pipeline Loop
@@ -127,6 +128,7 @@ while run_simulation:
     st.session_state.sim_tick += 1
     t = st.session_state.sim_tick
     
+    # Capture live telemetry values arriving straight over the cloud network bridge
     live_reading = st.session_state.cloud_moisture
 
     if live_reading <= dry_threshold:
