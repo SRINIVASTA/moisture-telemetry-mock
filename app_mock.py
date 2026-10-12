@@ -3,6 +3,7 @@ import pandas as pd
 import time
 import math
 import os
+import paho.mqtt.client as mqtt  # Ensure 'paho-mqtt' is written inside requirements.txt file
 
 # Set widescreen layout
 st.set_page_config(page_title="Telemetry Core - Custom Thresholds", layout="wide")
@@ -16,112 +17,96 @@ st.markdown("""
 
 CSV_FILE = "telemetry_log.csv"
 
-# 1. Initialize System State Variables
+# 1. Initialize State Metrics
 if "history" not in st.session_state:
     st.session_state.history = []
 if "sim_tick" not in st.session_state:
     st.session_state.sim_tick = 0
 if "watering_active" not in st.session_state:
     st.session_state.watering_active = False
+if "cloud_moisture" not in st.session_state:
+    st.session_state.cloud_moisture = 45
 
-# 2. Sidebar Configuration (Houses Operation Controls and Navigation Links)
+# 2. MQTT Cloud Stream Event Triggers
+def on_message(client, userdata, message):
+    try:
+        st.session_state.cloud_moisture = int(message.payload.decode("utf-8"))
+    except Exception:
+        pass
+
+if "mqtt_initialized" not in st.session_state:
+    try:
+        mqtt_client = mqtt.Client()
+        mqtt_client.on_message = on_message
+        mqtt_client.connect("://hivemq.com", 1883, 60)
+        mqtt_client.subscribe("sfic2026/krishitwin/moisture")
+        mqtt_client.loop_start()
+        st.session_state.mqtt_initialized = True
+    except Exception as e:
+        st.sidebar.error(f"⚠️ Cloud sync issue: {e}")
+
+# 3. Operations Panel Layout
 with st.sidebar:
     st.header("🎮 System Operations")
-    
-    # MASTER SWITCH: Controls whether the simulation loop runs
     run_simulation = st.toggle("🔌 Activate Telemetry Stream", value=False)
     
-    # CLEAR DATA BUTTON: Flushes data frames and deletes the CSV
     if st.button("🗑️ Clear Log & Reset History", type="primary"):
         if os.path.exists(CSV_FILE):
             os.remove(CSV_FILE)
         st.session_state.history = []
         st.session_state.sim_tick = 0
         st.session_state.watering_active = False
-        st.toast("Telemetry data completely wiped!", icon="🔥")
+        st.toast("Telemetry logs cleared!", icon="🔥")
         st.rerun()
 
     st.markdown("---")
+    st.header("🛰️ Project Ecosystem Gateway")
+    st.write("Open the physical node circuit alongside this app page:")
     
-    # --- TWO-TAB ECOSYSTEM GATEWAY LINKS (CLEAN NAVIGATION BLUEPRINTS) ---
-    st.header("🛰️ Project Gateway")
-    st.write("Review the complete ECE hardware blueprints:")
+    # Save the public Wokwi project URL in the variable below
+    wokwi_public_link = "https://wokwi.com"
+    github_repo_link = "https://github.com"
     
-    # Links point straight to her public GitHub repository code workspace
-    github_repo_link = "https://github.com/SRINIVASTA/moisture-telemetry-mock"
-    hardware_folder_link = "https://github.com/SRINIVASTA/moisture-telemetry-mock/blob/main/hardware"
-    
-    st.markdown(f"📂 **[Open Hardware Folder blueprints]({hardware_folder_link})**")
-    st.markdown(f"💻 **[View Main Source Repository]({github_repo_link})**")
+    st.markdown(f"🔗 **[Launch Virtual IoT Node (Tab 1)]({wokwi_public_link})**")
+    st.markdown(f"📂 **[View ECE Blueprints (GitHub)]({github_repo_link})**")
     
     st.markdown("---")
     st.header("⚙️ Threshold Controls")
-    st.write("Adjust trigger boundaries in real time:")
-    
-    # Live sliders to change logic rules on the fly
-    dry_threshold = st.slider(
-        label="⚠️ Dry Start Threshold (%)", 
-        min_value=5, 
-        max_value=40, 
-        value=20, 
-        step=1
-    )
-    
-    wet_threshold = st.slider(
-        label="🛑 Wet Stop Threshold (%)", 
-        min_value=60, 
-        max_value=95, 
-        value=80, 
-        step=1
-    )
+    dry_threshold = st.slider("⚠️ Dry Start Threshold (%)", 5, 40, 20, 1)
+    wet_threshold = st.slider("🛑 Wet Stop Threshold (%)", 60, 95, 80, 1)
     
     st.markdown("---")
     st.header("💾 Storage Manager")
     download_spot = st.empty()
 
-# 3. Main Layout Grid Components
+# 4. View Components
 alert_banner = st.empty()
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.subheader("📊 Current Node")
     metric_spot = st.empty()
-
 with col2:
     st.subheader("⚡ System Diagnostics")
     status_spot = st.empty()
-
 with col3:
     st.subheader("📈 Real-Time Stream Timeline")
     chart_spot = st.empty()
 
-st.subheader("📋 Live Log Terminal (Last 10 Accumulated Rows)")
+st.subheader("📋 Live Log Terminal (Last 10 Rows)")
 table_spot = st.empty()
 
-# --- PRE-RENDER BLANK / INACTIVE SYSTEM VALUES ---
 def render_display_state(live_reading, sys_state, metric_delta, color_mode, total_rows, df_chart, last_10_df):
     with metric_spot.container():
         st.metric(label="VIRTUAL_ECE_NODE_01", value=f"{live_reading} %", delta=metric_delta, delta_color=color_mode)
-        
     with status_spot.container():
-        st.code(f"""
-Telemetry Mode : BLUEPRINT_MOCK_LOOP
-Active State   : {sys_state}
-Dry Trigger Set: {dry_threshold}%
-Wet Trigger Set: {wet_threshold}%
-Total Database : {total_rows} rows saved
-        """, language="yaml")
-        
+        st.code(f"Telemetry Mode : MQTT_CLOUD_STREAM\nActive State   : {sys_state}\nDry Trigger Set: {dry_threshold}%\nWet Trigger Set: {wet_threshold}%\nTotal Database : {total_rows} rows saved", language="yaml")
     with chart_spot.container():
-        if not df_chart.empty:
-            st.line_chart(df_chart.set_index("System Time"), height=230)
-        else:
-            st.info("No timeline data loaded.")
-        
+        if not df_chart.empty: st.line_chart(df_chart.set_index("System Time"), height=230)
+        else: st.info("No timeline data loaded.")
     with table_spot.container():
         st.dataframe(last_10_df, use_container_width=True)
 
-# Read historical baseline state before potentially entering runtime loop
 all_data_exists = os.path.exists(CSV_FILE) and os.path.getsize(CSV_FILE) > 0
 all_data_df = pd.read_csv(CSV_FILE) if all_data_exists else pd.DataFrame(columns=["Timestamp", "Moisture (%)", "State", "Dry_Limit_Set", "Wet_Limit_Set"])
 total_accumulated_rows = len(all_data_df)
@@ -129,94 +114,53 @@ last_10_df = all_data_df.tail(10).iloc[::-1] if not all_data_df.empty else all_d
 df_chart = pd.DataFrame(st.session_state.history)
 
 if not run_simulation:
-    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Flip the sidebar toggle to execute smart data tracking.")
-    current_moisture = st.session_state.history[-1]["Moisture (%)"] if st.session_state.history else 45
-    render_display_state(current_moisture, "IDLE / SUSPENDED", "🚫 PAUSED", "off", total_accumulated_rows, df_chart, last_10_df)
+    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Open Tab 1, boot the simulator, then toggle stream switch here to sync live data.")
+    render_display_state(st.session_state.cloud_moisture, "IDLE / SUSPENDED", "🚫 PAUSED", "off", total_accumulated_rows, df_chart, last_10_df)
 
-# 4. Infinite Telemetry Pipeline Loop (Only activates if switch is ON)
+# 5. Live Runtime Pipeline Loop
 while run_simulation:
     st.session_state.sim_tick += 1
     t = st.session_state.sim_tick
     
-    # Automatically read manual browser address bar overrides if the judges test inputs manually
-    query_params = st.query_params
-    
-    if "moisture" in query_params:
-        try:
-            live_reading = int(query_params["moisture"])
-        except ValueError:
-            live_reading = 45
-    else:
-        # High-fidelity integrated math simulation tracking node data profiles smoothly
-        if st.session_state.watering_active:
-            last_moisture = st.session_state.history[-1]["Moisture (%)"] if st.session_state.history else 35
-            live_reading = min(100, last_moisture + int(math.sin(t) * 5) + 6)
-        else:
-            last_moisture = st.session_state.history[-1]["Moisture (%)"] if st.session_state.history else 60
-            live_reading = max(0, last_moisture - int(math.cos(t) * 2) - 2)
+    # Read telemetry dynamically captured from the online network bridge
+    live_reading = st.session_state.cloud_moisture
 
-    # --- STATE PROCESSING AUTOMATION ENGINE ---
     if live_reading <= dry_threshold:
         sys_state = "CRITICAL: DRY START"
-        alert_banner.error(f"🚨 STATE: [{sys_state}] - Soil below configured safe limit ({dry_threshold}%). Pump ON.")
+        alert_banner.error(f"🚨 STATE: [{sys_state}] - Soil below safe threshold ({dry_threshold}%). Water Pump ON.")
         metric_delta = f"- BELOW {dry_threshold}%"
         color_mode = "inverse"
         st.session_state.watering_active = True
-        
     elif live_reading >= wet_threshold:
         sys_state = "CRITICAL: WET STOP"
-        alert_banner.warning(f"🛑 STATE: [{sys_state}] - Soil reached ceiling boundary ({wet_threshold}%). Pump OFF.")
+        alert_banner.warning(f"🛑 STATE: [{sys_state}] - Soil reached ceiling threshold ({wet_threshold}%). Water Pump OFF.")
         metric_delta = f"+ ABOVE {wet_threshold}%"
         color_mode = "normal"
         st.session_state.watering_active = False
-        
     else:
         sys_state = "PUMP ACTIVE" if st.session_state.watering_active else "NOMINAL OPERATION"
-        alert_banner.success(f"✅ TELEMETRY LINK ACTIVE: [{sys_state}]")
+        alert_banner.success(f"✅ TELEMETRY LINK SYNCED: [{sys_state}]")
         metric_delta = "🌊 INCREASING" if st.session_state.watering_active else "🍂 DECREASING"
         color_mode = "off"
 
-    # --- SAVE PAYLOAD TO LOCAL FILE STORAGE matrix ---
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    new_data = {
-        "Timestamp": timestamp, 
-        "Moisture (%)": live_reading, 
-        "State": sys_state,
-        "Dry_Limit_Set": dry_threshold,
-        "Wet_Limit_Set": wet_threshold
-    }
-    new_row_df = pd.DataFrame([new_data])
-    
-    if not os.path.exists(CSV_FILE):
-        new_row_df.to_csv(CSV_FILE, index=False)
-    else:
-        new_row_df.to_csv(CSV_FILE, mode='a', header=False, index=False)
+    new_row_df = pd.DataFrame([{"Timestamp": timestamp, "Moisture (%)": live_reading, "State": sys_state, "Dry_Limit_Set": dry_threshold, "Wet_Limit_Set": wet_threshold}])
+    new_row_df.to_csv(CSV_FILE, index=False) if not os.path.exists(CSV_FILE) else new_row_df.to_csv(CSV_FILE, mode='a', header=False, index=False)
 
-    # --- PROCESS CHART DATA ACCUMULATION ---
     st.session_state.history.append({"System Time": time.strftime('%H:%M:%S'), "Moisture (%)": live_reading})
-    if len(st.session_state.history) > 30:
-        st.session_state.history.pop(0)
+    if len(st.session_state.history) > 30: st.session_state.history.pop(0)
     df_chart = pd.DataFrame(st.session_state.history)
 
-    # --- READ TRACKING HISTORY LOG TERMINAL DATA ---
     all_data_df = pd.read_csv(CSV_FILE)
     last_10_df = all_data_df.tail(10).iloc[::-1]
     total_accumulated_rows = len(all_data_df)
 
-    # --- RENDER TELEMETRY PLUGINS ---
     render_display_state(live_reading, sys_state, metric_delta, color_mode, total_accumulated_rows, df_chart, last_10_df)
 
-    # --- CONVERT COMPLETE LOG FOR DOWNLOAD LINK ---
     if len(all_data_df) > 0:
         csv_data = all_data_df.to_csv(index=False).encode('utf-8')
         with download_spot.container():
-            st.download_button(
-                label="📥 Download Complete CSV Log",
-                data=csv_data,
-                file_name=f"telemetry_export_{time.strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv",
-                key=f"csv_download_btn_{t}"
-            )
+            st.download_button(label="📥 Download Complete CSV Log", data=csv_data, file_name=f"telemetry_export_{time.strftime('%Y%m%d_%H%M%S')}.csv", mime="text/csv", key=f"csv_download_btn_{t}")
         
     time.sleep(1)
     st.rerun()
