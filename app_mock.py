@@ -39,8 +39,8 @@ if "mqtt_initialized" not in st.session_state:
     try:
         mqtt_client = mqtt.Client()
         mqtt_client.on_message = on_message
-        # FIXED: Added the complete, clear broker address string
-        mqtt_client.connect("://hivemq.com", 1883, 60)
+        # FIXED: Complete visible cloud address broker string integrated
+        mqtt_client.connect("broker.hivemq.com", 1883, 60)
         mqtt_client.subscribe("sfic2026/krishitwin/moisture")
         mqtt_client.loop_start() # Launches real-time background tracking threads
         st.session_state.mqtt_initialized = True
@@ -163,7 +163,8 @@ while run_simulation:
     df_chart = pd.DataFrame(st.session_state.history)
 
     all_data_df = pd.read_csv(CSV_FILE)
-    last_10_df = all_data_df.tail(10).iloc[::-1)
+    # FIXED: Replaced structural index parenthesis with closing slice bracket ']'
+    last_10_df = all_data_df.tail(10).iloc[::-1]
     total_accumulated_rows = len(all_data_df)
 
     render_display_state(live_reading, sys_state, metric_delta, color_mode, total_accumulated_rows, df_chart, last_10_df)
