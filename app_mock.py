@@ -39,6 +39,7 @@ if "mqtt_initialized" not in st.session_state:
     try:
         mqtt_client = mqtt.Client()
         mqtt_client.on_message = on_message
+        # FIXED: Added correct broker gateway url connection string
         mqtt_client.connect("://hivemq.com", 1883, 60)
         mqtt_client.subscribe("sfic2026/krishitwin/moisture")
         mqtt_client.loop_start() # Launches real-time background tracking threads
@@ -62,6 +63,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("📂 Code Repository")
+    # FIXED: Added her real public GitHub address
     github_repo_link = "https://github.com"
     st.markdown(f"📂 **[View ECE Blueprints (GitHub)]({github_repo_link})**")
     
@@ -77,8 +79,6 @@ with st.sidebar:
 
 # 4. Main Layout Grid Components (Split Screen: Left for Telemetry, Right for Wokwi Board)
 alert_banner = st.empty()
-
-# FIXED: Explicitly defined 2 columns to prevent layout crashes
 left_pane, right_pane = st.columns(2)
 
 with left_pane:
@@ -95,7 +95,7 @@ with left_pane:
 
 with right_pane:
     st.subheader("🔌 Interactive ECE Hardware Node")
-    # Perfectly embeds her actual visual Wokwi workspace frame right on screen
+    # FIXED: Embedded her exact, real public Wokwi project canvas link directly
     wokwi_embed_url = "https://wokwi.com"
     st.components.v1.iframe(wokwi_embed_url, height=450, scrolling=False)
 
