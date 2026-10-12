@@ -6,13 +6,13 @@ import os
 import paho.mqtt.client as mqtt
 
 # Set widescreen layout
-st.set_page_config(page_title="Telemetry Core - Custom Thresholds", layout="wide")
+st.set_page_config(page_title="Telemetry Core - Automated Control", layout="wide")
 
 st.markdown("""
     <style>
     .telemetry-title { text-align: center; font-family: 'Courier New', monospace; font-weight: bold; color: #00FF66; }
     </style>
-    <h1 class='telemetry-title'>🛰️ TELEMETRY SYSTEM CORE (DYNAMIC CONTROL)</h1>
+    <h1 class='telemetry-title'>🛰️ TELEMETRY SYSTEM CORE (AUTOMATED CONTROL)</h1>
     """, unsafe_allow_html=True)
 
 CSV_FILE = "telemetry_log.csv"
@@ -26,12 +26,16 @@ if "watering_active" not in st.session_state:
     st.session_state.watering_active = False
 if "cloud_moisture" not in st.session_state:
     st.session_state.cloud_moisture = 45
+if "first_packet_received" not in st.session_state:
+    st.session_state.first_packet_received = False
 
-# 2. MQTT Cloud Signal Broker (Perfectly matches the Wokwi server pipeline address)
+# 2. MQTT Cloud Signal Broker 
 def on_message(client, userdata, message):
     try:
         # Decode the live moisture percentage numbers passing over the internet
         st.session_state.cloud_moisture = int(message.payload.decode("utf-8"))
+        # AUTOMATION TRIGGER: The moment data hits the web app, mark the stream as active!
+        st.session_state.first_packet_received = True
     except Exception:
         pass
 
@@ -40,7 +44,7 @@ if "mqtt_initialized" not in st.session_state:
         mqtt_client = mqtt.Client()
         mqtt_client.on_message = on_message
         # Connecting to public HiveMQ cluster matching the ESP32 code structure
-        mqtt_client.connect("broker.hivemq.com", 1883, 60)
+        mqtt_client.connect("://hivemq.com", 1883, 60)
         mqtt_client.subscribe("sfic2026/krishitwin/moisture")
         mqtt_client.loop_start() # Launches real-time background tracking threads
         st.session_state.mqtt_initialized = True
@@ -50,7 +54,12 @@ if "mqtt_initialized" not in st.session_state:
 # 3. Operations Panel Layout (Houses Controls and GitHub Link)
 with st.sidebar:
     st.header("🎮 System Operations")
-    run_simulation = st.toggle("🔌 Activate Telemetry Stream", value=False)
+    
+    # VISUAL INDICATOR: Shows if data is actively being received or waiting
+    if st.session_state.first_packet_received:
+        st.success("🟢 TELEMETRY PIPELINE LIVE")
+    else:
+        st.warning("⏳ WAITING FOR WOKWI NODE...")
     
     if st.button("🗑️ Clear Log & Reset History", type="primary"):
         if os.path.exists(CSV_FILE):
@@ -58,6 +67,7 @@ with st.sidebar:
         st.session_state.history = []
         st.session_state.sim_tick = 0
         st.session_state.watering_active = False
+        st.session_state.first_packet_received = False
         st.toast("Telemetry logs cleared!", icon="🔥")
         st.rerun()
 
@@ -95,7 +105,7 @@ with left_pane:
 with right_pane:
     st.subheader("🔌 Interactive ECE Hardware Node")
     # Embedded your exact Wokwi canvas link directly
-    wokwi_embed_url = "https://wokwi.com/projects/477695135339057153"
+    wokwi_embed_url = "https://wokwi.com"
     st.components.v1.iframe(wokwi_embed_url, height=450, scrolling=False)
 
 st.subheader("📋 Live Log Terminal (Last 10 Rows)")
@@ -120,12 +130,12 @@ total_accumulated_rows = len(all_data_df)
 last_10_df = all_data_df.tail(10).iloc[::-1] if not all_data_df.empty else all_data_df
 df_chart = pd.DataFrame(st.session_state.history)
 
-if not run_simulation:
-    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Click the play button inside the hardware node on the right, then toggle the sidebar switch to sync live data.")
-    render_display_state(st.session_state.cloud_moisture, "IDLE / SUSPENDED", "🚫 PAUSED", "off", total_accumulated_rows, df_chart, last_10_df)
+# 5. Live Runtime Pipeline Loop (Now controlled entirely by incoming packets)
+if not st.session_state.first_packet_received:
+    alert_banner.info("⏸️ TELEMETRY SYSTEM IDLE: Click the green play button inside the Wokwi hardware canvas on the right to automatically wake up the stream.")
+    render_display_state(st.session_state.cloud_moisture, "IDLE / AWAITING HARDWARE", "🚫 AWAITING DATA", "off", total_accumulated_rows, df_chart, last_10_df)
 
-# 5. Live Runtime Pipeline Loop
-while run_simulation:
+while st.session_state.first_packet_received:
     st.session_state.sim_tick += 1
     t = st.session_state.sim_tick
     
