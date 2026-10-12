@@ -77,7 +77,9 @@ with st.sidebar:
 
 # 4. Main Layout Grid Components (Split Screen: Left for Telemetry, Right for Wokwi Board)
 alert_banner = st.empty()
-left_pane, right_pane = st.columns()
+
+# FIXED: Explicitly defined 2 columns to prevent layout crashes
+left_pane, right_pane = st.columns(2)
 
 with left_pane:
     col1, col2 = st.columns(2)
